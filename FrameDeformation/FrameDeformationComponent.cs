@@ -4,56 +4,64 @@ using System.Collections.Generic;
 using Grasshopper.Kernel;
 using Rhino.Geometry;
 
-// In order to load the result of this wizard, you will also need to
-// add the output bin/ folder of this project to the list of loaded
-// folder in Grasshopper.
-// You can use the _GrasshopperDeveloperSettings Rhino command for that.
-
 namespace FrameDeformation
 {
 	public class FrameDeformationComponent : GH_Component
 	{
-		/// <summary>
-		/// Each implementation of GH_Component must provide a public 
-		/// constructor without any arguments.
-		/// Category represents the Tab in which the component will appear, 
-		/// Subcategory the panel. If you use non-existing tab or panel names, 
-		/// new tabs/panels will automatically be created.
-		/// </summary>
 		public FrameDeformationComponent()
-		  : base("FrameDeformation", "Nickname",
-			  "Description",
-			  "Category", "Subcategory")
+		  : base("FrameDeformation", "FrameDeformation",
+			  "Solves the Equalibrium of the Frame Structure",
+			  "Frame", "Solver")
 		{
 		}
 
-		/// <summary>
-		/// Registers all the input parameters for this component.
-		/// </summary>
 		protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
 		{
+			pManager.AddGenericParameter("Line", "line", "Line of the beam", GH_ParamAccess.list);
+			pManager.AddGenericParameter("Constraint Nodes", "constraint nodes", "Constraint nodes objects", GH_ParamAccess.list);
+			pManager.AddGenericParameter("Load Nodes", "load nodes", "Load nodes objects", GH_ParamAccess.list);
+			pManager.AddNumberParameter("Area", "A", "Cross sectional area of the bar", GH_ParamAccess.list);
+			pManager.AddNumberParameter("Youngs Modulus", "E", "Stiffness of the bar", GH_ParamAccess.list);
+			pManager.AddNumberParameter("Moment of Area", "I", "Second moment of area of the beam", GH_ParamAccess.list);
+			pManager.AddNumberParameter("Scale Factor", "SF", "Scale Sectional Forces Diagrams With Scale Factor", GH_ParamAccess.item);
 		}
 
-		/// <summary>
-		/// Registers all the output parameters for this component.
-		/// </summary>
 		protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
 		{
+			pManager.AddLineParameter("Shear Diagram", "shear diagram", "shear diagram", GH_ParamAccess.list);
+			pManager.AddLineParameter("Moment Diagram", "moment diagram", "moment diagram", GH_ParamAccess.list);
 		}
 
-		/// <summary>
-		/// This is the method that actually does the work.
-		/// </summary>
-		/// <param name="DA">The DA object can be used to retrieve data from input parameters and 
-		/// to store data in output parameters.</param>
 		protected override void SolveInstance(IGH_DataAccess DA)
 		{
+			// Retrive data from component
+			List<double> A = new List<double>();
+			List<double> E = new List<double>();
+			List<double> I = new List<double>();
+			List<Line> lines = new List<Line>();
+			List<ContstraintNode> rNodes = new List<ContstraintNode>();
+			List<LoadNode> loadNodes = new List<LoadNode>();
+			double scaleFactor = 1.0;
+
+			DA.GetDataList("Line", lines);
+			DA.GetDataList("Area", A);
+			DA.GetDataList("Youngs Modulus", E);
+			DA.GetDataList("Constraint Nodes", rNodes);
+			DA.GetDataList("Load Nodes", loadNodes);
+			DA.GetData("Scale Factor", ref scaleFactor);
+
+			// The length of A and E must be the same as lines
+			if ((A.Count != E.Count) | (E.Count != lines.Count))
+			{
+				throw new ArgumentException("Length of A and E must equal length of Line");
+			}
+
+			// Create one list to store the nodes and one list to store the bars
+			List<Node> trussNodes = new List<Node>();
+			List<Bar> trussBars = new List<Bar>();
 		}
 
-		/// <summary>
-		/// Provides an Icon for every component that will be visible in the User Interface.
-		/// Icons need to be 24x24 pixels.
-		/// </summary>
+
 		protected override System.Drawing.Bitmap Icon
 		{
 			get
