@@ -38,7 +38,7 @@ namespace FrameDeformation
 			DA.GetDataList("Point", points);
 			DA.GetDataList("Force in x", forceX);
 			DA.GetDataList("Force in y", forceY);
-			DA.GetDataList("Moment in R", momentR);
+			DA.GetDataList("Moment in r", momentR);
 
 			// Create a restraint node object and store it in a list
 			List<LoadNode> nodes = new List<LoadNode>();

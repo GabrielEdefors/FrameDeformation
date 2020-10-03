@@ -4,6 +4,7 @@ using LinearAlgebra = MathNet.Numerics.LinearAlgebra;
 using System.Linq;
 
 using Grasshopper.Kernel;
+using Grasshopper.Kernel.Data;
 using Rhino.Geometry;
 
 namespace FrameDeformation
@@ -25,13 +26,13 @@ namespace FrameDeformation
 			pManager.AddNumberParameter("Area", "A", "Cross sectional area of the bar", GH_ParamAccess.list);
 			pManager.AddNumberParameter("Youngs Modulus", "E", "Stiffness of the bar", GH_ParamAccess.list);
 			pManager.AddNumberParameter("Moment of Area", "I", "Second moment of area of the beam", GH_ParamAccess.list);
-			pManager.AddNumberParameter("Scale Factor", "SF", "Scale Sectional Forces Diagrams With Scale Factor", GH_ParamAccess.item);
+			pManager.AddNumberParameter("Transverse Load", "Tranverse Load", "Magnitude of the uniformly distributed transverse load", GH_ParamAccess.list);
 		}
 
 		protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
 		{
-			pManager.AddLineParameter("Shear Diagram", "shear diagram", "shear diagram", GH_ParamAccess.list);
-			pManager.AddLineParameter("Moment Diagram", "moment diagram", "moment diagram", GH_ParamAccess.list);
+			pManager.AddGenericParameter("Shear Diagram", "shear diagram", "shear diagram", GH_ParamAccess.item);
+			pManager.AddGenericParameter("Moment Diagram", "moment diagram", "moment diagram", GH_ParamAccess.item);
 		}
 
 		protected override void SolveInstance(IGH_DataAccess DA)
@@ -43,14 +44,15 @@ namespace FrameDeformation
 			List<Line> lines = new List<Line>();
 			List<ContstraintNode> rNodes = new List<ContstraintNode>();
 			List<LoadNode> loadNodes = new List<LoadNode>();
-			double scaleFactor = 1.0;
+			List<double> transverseLoad = new List<double>();
 
 			DA.GetDataList("Line", lines);
 			DA.GetDataList("Area", A);
 			DA.GetDataList("Youngs Modulus", E);
+			DA.GetDataList("Moment of Area", I);
 			DA.GetDataList("Constraint Nodes", rNodes);
 			DA.GetDataList("Load Nodes", loadNodes);
-			DA.GetData("Scale Factor", ref scaleFactor);
+			DA.GetDataList("Transverse Load", transverseLoad);
 
 			// The length of A and E must be the same as lines
 			if ((A.Count != E.Count) | (E.Count != lines.Count) | (I.Count != lines.Count))
@@ -168,7 +170,7 @@ namespace FrameDeformation
 
 
 				// Create a beam object between the nodes
-				Beam beam = new Beam(node1, node2, A[i], E[i], I[i]);
+				Beam beam = new Beam(node1, node2, A[i], E[i], I[i], transverseLoad[i]);
 				frameBeams.Add(beam);
 
 				// Topology matrix
@@ -227,12 +229,17 @@ namespace FrameDeformation
 			for (int i = 0; i < frameBeams.Count; i++)
 			{
 				LinearAlgebra.Matrix<double> KElem = frameBeams[i].ComputeStiffnessMatrix();
+				LinearAlgebra.Vector<double> fl = frameBeams[i].ComputeLoadVector();
 
 				// Assemble
 				for (int k = 0; k < 6; k++)
 				{
+					// Add contributions to the load vector
+					forceVector[eDof[i][k]] = forceVector[eDof[i][k]] + fl[k];
+
 					for (int l = 0; l < 6; l++)
 					{
+						// Add contributions to the stiffness matrix
 						K[eDof[i][k], eDof[i][l]] = K[eDof[i][k], eDof[i][l]] + KElem[k, l];
 					}
 				}
@@ -243,8 +250,9 @@ namespace FrameDeformation
 			LinearAlgebra.Vector<double> displacements = solver.solveEquations(K, forceVector, boundaryDofs, boundaryConstraints.Cast<double>().ToList());
 
 			// Loop trough each beam and compute the shear forces and bending moments and save in branches for each element
-			// Save the displacement for each node and calculate the stress in each bar
-			List<double> elemStress = new List<double> { };
+			var VTree = new Grasshopper.DataTree<double>();
+			var MTree = new Grasshopper.DataTree<double>();
+
 			for (int i = 0; i < nElem; i++)
 			{
 				double disp1 = displacements[eDof[i][0]];
@@ -255,9 +263,18 @@ namespace FrameDeformation
 				double disp6 = displacements[eDof[i][5]];
 
 				// Calculate element shear force
-				frameBeams[i].computeShearForce(new List<double> { disp1, disp2, disp3, disp4, disp5, disp6 });
+				List<double> VBranch = frameBeams[i].ComputeShearForce(new List<double> { disp1, disp2, disp3, disp4, disp5, disp6 });
+				List<double> MBranch = frameBeams[i].ComputeBendingMoment(new List<double> { disp1, disp2, disp3, disp4, disp5, disp6 });
 
+				// Add the respective tree
+				GH_Path pth = new GH_Path(i);
+				VTree.AddRange(VBranch, pth);
+				MTree.AddRange(MBranch, pth);
 			}
+
+			DA.SetDataTree(0, VTree);
+			DA.SetDataTree(1, MTree);
+
 		}
 
 

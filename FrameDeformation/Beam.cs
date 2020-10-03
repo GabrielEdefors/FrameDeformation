@@ -18,7 +18,7 @@ namespace FrameDeformation
 		public double ElemLength { get; set; } = 0.0;
 		public double MomentArea { get; set; } = 0.0;
 		public double NrEvalPoints { get; set; } = 100;
-		public double TranverseLoad { get; set; } = 0;
+		public double TransverseLoad { get; set; } = 0;
 
 		private LinearAlgebra.Matrix<double> G = LinearAlgebra.Matrix<double>.Build.Dense(6, 6);
 
@@ -35,7 +35,7 @@ namespace FrameDeformation
 			StiffnessModulus = stiffnessModulus;
 			Area = area;
 			MomentArea = momentArea;
-			TranverseLoad = transverseLoad;
+			TransverseLoad = transverseLoad;
 
 			// Compute the element lenght and the transformation matrix G
 			double x1 = Nodes[0].Point.X;
@@ -68,7 +68,7 @@ namespace FrameDeformation
 
 			K[0, 0] = Area * StiffnessModulus / ElemLength;
 			K[0, 3] = -Area * StiffnessModulus / ElemLength;
-			K[3, 1] = -Area * StiffnessModulus / ElemLength;
+			K[3, 0] = -Area * StiffnessModulus / ElemLength;
 			K[3, 3] = Area * StiffnessModulus / ElemLength;
 
 			K[1, 1] = 12 * StiffnessModulus * MomentArea / Math.Pow(ElemLength, 3);
@@ -86,10 +86,10 @@ namespace FrameDeformation
 			K[4, 4] = 12 * StiffnessModulus * MomentArea / Math.Pow(ElemLength, 3);
 			K[4, 5] = - 6 * StiffnessModulus * MomentArea / Math.Pow(ElemLength, 2);
 
-			K[2, 1] = 6 * StiffnessModulus * MomentArea / Math.Pow(ElemLength, 2);
-			K[2, 2] = 2 * StiffnessModulus * MomentArea / ElemLength;
-			K[2, 4] = - 6 * StiffnessModulus * MomentArea / Math.Pow(ElemLength, 2);
-			K[2, 5] = 4 * StiffnessModulus * MomentArea / ElemLength;
+			K[5, 1] = 6 * StiffnessModulus * MomentArea / Math.Pow(ElemLength, 2);
+			K[5, 2] = 2 * StiffnessModulus * MomentArea / ElemLength;
+			K[5, 4] = - 6 * StiffnessModulus * MomentArea / Math.Pow(ElemLength, 2);
+			K[5, 5] = 4 * StiffnessModulus * MomentArea / ElemLength;
 
 			// Tranform to global element stiffness matrix using transformation matrix G
 			LinearAlgebra.Matrix<double> GT = G.Transpose();
@@ -98,7 +98,22 @@ namespace FrameDeformation
 			return KGlobal;
 		}
 
-		public List<double> computeShearForce(List<double> globalElemDisp)
+		public LinearAlgebra.Vector<double> ComputeLoadVector()
+		{
+			LinearAlgebra.Vector<double> fl = LinearAlgebra.Vector<double>.Build.Dense(6);
+
+			fl[1] = TransverseLoad * ElemLength / 2;
+			fl[2] = TransverseLoad * ElemLength * ElemLength / 12;
+			fl[4] = TransverseLoad * ElemLength / 2;
+			fl[5] = -TransverseLoad * ElemLength * ElemLength / 12;
+
+			// Transform
+			LinearAlgebra.Vector<double> flGlobal = G.Transpose().Multiply(fl);
+
+			return flGlobal;
+		}
+
+		public List<double> ComputeShearForce(List<double> globalElemDisp)
 		{
 			List<double> V = new List<double> { };
 
@@ -123,16 +138,14 @@ namespace FrameDeformation
 				localElemDispBeam[3] = localElemDisp[5];
 
 				// Particular solution for uniformly distributed load
-				double Vpi = -TranverseLoad * (xi - ElemLength / 2);
+				double Vpi = -TransverseLoad * (xi - ElemLength / 2);
 
 				V.Add(-StiffnessModulus * MomentArea * (dBidx.DotProduct(localElemDispBeam) + Vpi));
-
-				return V;
-
 			}
+			return V;
 		}
 
-		public List<double> computebendingMoment(List<double> globalElemDisp)
+		public List<double> ComputeBendingMoment(List<double> globalElemDisp)
 		{
 			List<double> M = new List<double> { };
 
@@ -157,10 +170,12 @@ namespace FrameDeformation
 				localElemDispBeam[3] = localElemDisp[5];
 
 				// Particular solution for uniformly distributed load
-				double Mpi = TranverseLoad * (xi * xi / 2 - ElemLength * xi / 2 + ElemLength * ElemLength / 12);
+				double Mpi = TransverseLoad * (xi * xi / 2 - ElemLength * xi / 2 + ElemLength * ElemLength / 12);
 
 				M.Add(StiffnessModulus * MomentArea * (Bi.DotProduct(localElemDispBeam) + Mpi));
 			}
+
+			return M;
 		}
 
 	}
