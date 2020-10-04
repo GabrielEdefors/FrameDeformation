@@ -8,10 +8,10 @@ using Rhino.Geometry;
 
 namespace FrameDeformation
 {
-	public class plotDiagrams : GH_Component
+	public class PlotDiagrams : GH_Component
 	{
 
-		public plotDiagrams()
+		public PlotDiagrams()
 		  : base("FrameDeformation", "FrameDeformation",
 			  "Plots the provided values at each beam",
 			  "Frame", "Post Processing")
@@ -20,8 +20,9 @@ namespace FrameDeformation
 
 		protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
 		{
-			pManager.AddGenericParameter("Values", "Values", "Values", GH_ParamAccess.item);
-			pManager.AddCurveParameter("Line", "Line", "Lines representing the beams", GH_ParamAccess.list);
+			pManager.AddNumberParameter("Values", "Values", "Values", GH_ParamAccess.tree);
+			pManager.AddLineParameter("Line", "Line", "Lines representing the beams", GH_ParamAccess.list);
+			pManager.AddNumberParameter("Scale Factor", "Scale Factor", "Scale factor for the diagram", GH_ParamAccess.item);
 		}
 
 		protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
@@ -32,9 +33,11 @@ namespace FrameDeformation
 		protected override void SolveInstance(IGH_DataAccess DA)
 		{
 			List<Line> lines = new List<Line>();
+			double scaleFactor = 0.0;
 
-			DA.GetDataTree("Values", out GH_Structure<IGH_Goo> values);
+			DA.GetDataTree("Values", out GH_Structure<GH_Number> values);
 			DA.GetDataList("Line", lines);
+			DA.GetData("Scale Factor", ref scaleFactor);
 
 			// The length of A and E must be the same as lines
 			if ((lines.Count != values.Branches.Count))
@@ -42,11 +45,48 @@ namespace FrameDeformation
 				throw new ArgumentException("The number of brances must be equal to the length of Line");
 			}
 
-			// 
+			int nrValues = values[0].Count;
+
+			List<Polyline> diagrams = new List<Polyline>();
+
 			for (int i = 0; i < lines.Count; i++)
 			{
 
+
+				// Calculate normal vector
+				Vector3d tangentVector = new Vector3d(lines[i].To - lines[i].From);
+				tangentVector.Unitize();
+				Vector3d normalVector = Vector3d.CrossProduct(tangentVector, new Vector3d(0, 0, 1));
+
+				List<Point3d> points = new List<Point3d>();
+				
+
+				for (int j = 0; j < nrValues; j++)
+				{
+					Point3d pi = lines[i].PointAt((double)j / nrValues);
+
+					//if (j == 0)
+					//	lines[i].PointAt((double)j / nrValues);
+
+					//Translate point in normal direction
+					double scaledValue = (double)values[i][j].Value * scaleFactor;
+					pi.Transform(Transform.Translation(Vector3d.Multiply(normalVector, scaledValue)));
+					points.Add(pi);
+
+					//if (j == nrValues - 1)
+					//	points.Add(lines[i].PointAt((double)j / nrValues));
+
+				}
+
+				// Draw a polyline
+				Polyline diagram = new Polyline();
+				diagram.AddRange(points);
+				diagrams.Add(diagram);
+
+				
 			}
+
+			DA.SetDataList("Diagram", diagrams);
 
 		}
 

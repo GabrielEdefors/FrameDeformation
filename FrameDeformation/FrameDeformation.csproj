@@ -69,7 +69,7 @@
     <Compile Include="LoadNode.cs" />
     <Compile Include="LoadNodeComponent.cs" />
     <Compile Include="Node.cs" />
-    <Compile Include="plotDiagrams.cs" />
+    <Compile Include="PlotDiagrams.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Solver.cs" />
   </ItemGroup>

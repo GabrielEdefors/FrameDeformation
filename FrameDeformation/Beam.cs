@@ -140,7 +140,7 @@ namespace FrameDeformation
 				// Particular solution for uniformly distributed load
 				double Vpi = -TransverseLoad * (xi - ElemLength / 2);
 
-				V.Add(-StiffnessModulus * MomentArea * (dBidx.DotProduct(localElemDispBeam) + Vpi));
+				V.Add(-StiffnessModulus * MomentArea * (dBidx.DotProduct(localElemDispBeam)) + Vpi);
 			}
 			return V;
 		}
@@ -155,7 +155,7 @@ namespace FrameDeformation
 				LinearAlgebra.Vector<double> Bi = LinearAlgebra.Vector<double>.Build.Dense(4);
 				Bi[0] = -6 / Math.Pow(ElemLength, 2) + 12 * xi / Math.Pow(ElemLength, 3);
 				Bi[1] = -4 / ElemLength + 6 * xi / Math.Pow(ElemLength, 2);
-				Bi[2] = 6 / Math.Pow(ElemLength, 2) - 12 * xi / Math.Pow(ElemLength, 4);
+				Bi[2] = 6 / Math.Pow(ElemLength, 2) - 12 * xi / Math.Pow(ElemLength, 3);
 				Bi[3] = -2 / ElemLength + 6 * xi / Math.Pow(ElemLength, 2);
 
 				// Transform from global to local coordinates
@@ -172,7 +172,7 @@ namespace FrameDeformation
 				// Particular solution for uniformly distributed load
 				double Mpi = TransverseLoad * (xi * xi / 2 - ElemLength * xi / 2 + ElemLength * ElemLength / 12);
 
-				M.Add(StiffnessModulus * MomentArea * (Bi.DotProduct(localElemDispBeam) + Mpi));
+				M.Add(StiffnessModulus * MomentArea * (Bi.DotProduct(localElemDispBeam)) + Mpi);
 			}
 
 			return M;
