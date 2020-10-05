@@ -23,6 +23,7 @@ namespace FrameDeformation
 			pManager.AddGenericParameter("Line", "line", "Line of the beam", GH_ParamAccess.list);
 			pManager.AddGenericParameter("Constraint Nodes", "constraint nodes", "Constraint nodes objects", GH_ParamAccess.list);
 			pManager.AddGenericParameter("Load Nodes", "load nodes", "Load nodes objects", GH_ParamAccess.list);
+			pManager.AddGenericParameter("Hinge Nodes", "hinge nodes", "Hinge nodes objects", GH_ParamAccess.list);
 			pManager.AddNumberParameter("Area", "A", "Cross sectional area of the bar", GH_ParamAccess.list);
 			pManager.AddNumberParameter("Youngs Modulus", "E", "Stiffness of the bar", GH_ParamAccess.list);
 			pManager.AddNumberParameter("Moment of Area", "I", "Second moment of area of the beam", GH_ParamAccess.list);
@@ -44,6 +45,7 @@ namespace FrameDeformation
 			List<Line> lines = new List<Line>();
 			List<ContstraintNode> rNodes = new List<ContstraintNode>();
 			List<LoadNode> loadNodes = new List<LoadNode>();
+			List<HingeNode> hingeNodes = new List<HingeNode>();
 			List<double> transverseLoad = new List<double>();
 
 			DA.GetDataList("Line", lines);
@@ -52,6 +54,7 @@ namespace FrameDeformation
 			DA.GetDataList("Moment of Area", I);
 			DA.GetDataList("Constraint Nodes", rNodes);
 			DA.GetDataList("Load Nodes", loadNodes);
+			DA.GetDataList("Hinge Nodes", hingeNodes);
 			DA.GetDataList("Transverse Load", transverseLoad);
 
 			// The length of A and E must be the same as lines
@@ -129,6 +132,15 @@ namespace FrameDeformation
 						}
 					}
 
+					foreach (HingeNode hingeNode in hingeNodes)
+					{
+						if (hingeNode == node1)
+						{
+							node1.Hinge = true;
+
+						}
+					}
+
 					// Finally add the node
 					frameNodes.Add(node1);
 
@@ -140,7 +152,7 @@ namespace FrameDeformation
 					node2.ID = id_node_2;
 					node2.Dofs = System.Linq.Enumerable.Range(id_node_2 * 3, 3).ToList();
 
-					// Check if any boundary node or load node exist at current node
+					// Check if any boundary node, load node or hinge node exist at current node
 					foreach (ContstraintNode rNode in rNodes)
 					{
 						if (rNode == node2)
@@ -161,6 +173,15 @@ namespace FrameDeformation
 							node2.ForceX = loadNode.ForceX;
 							node2.ForceY = loadNode.ForceY;
 							node2.MomentR = loadNode.MomentR;
+						}
+					}
+
+					foreach (HingeNode hingeNode in hingeNodes)
+					{
+						if (hingeNode == node2)
+						{
+							node2.Hinge = true;
+
 						}
 					}
 
@@ -240,7 +261,7 @@ namespace FrameDeformation
 					for (int l = 0; l < 6; l++)
 					{
 						// Add contributions to the stiffness matrix
-						K[eDof[i][k], eDof[i][l]] = K[eDof[i][k], eDof[i][l]] + KElem[k, l];
+						K[eDof[i][k], eDof[i][l]] = K[eDof[i][k], eDof[i][l]] + KElem[k, l];,
 					}
 				}
 			}

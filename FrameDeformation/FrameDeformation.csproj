@@ -66,6 +66,8 @@
     <Compile Include="ConstraintNodeComponent.cs" />
     <Compile Include="FrameDeformationComponent.cs" />
     <Compile Include="FrameDeformationInfo.cs" />
+    <Compile Include="HingeComponent.cs" />
+    <Compile Include="HingeNode.cs" />
     <Compile Include="LoadNode.cs" />
     <Compile Include="LoadNodeComponent.cs" />
     <Compile Include="Node.cs" />

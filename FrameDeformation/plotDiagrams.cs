@@ -49,6 +49,25 @@ namespace FrameDeformation
 
 			List<Polyline> diagrams = new List<Polyline>();
 
+			// If scale factor not provided normalize so that maximum value corresponds to half beam length
+			double maxValue = 0.0;
+			int imax = 0;
+			if (scaleFactor == 0.0)
+			{
+				for (int i = 0; i < lines.Count; i++)
+				{
+					for (int j = 0; j < nrValues; j++)
+					{
+						if ((double)values[i][j].Value >= maxValue)
+						{
+							maxValue = (double)values[i][j].Value;
+							imax = i;
+						}
+					}
+				}
+				scaleFactor = lines[imax].Length / maxValue / 2;
+			}
+
 			for (int i = 0; i < lines.Count; i++)
 			{
 
@@ -59,22 +78,21 @@ namespace FrameDeformation
 				Vector3d normalVector = Vector3d.CrossProduct(tangentVector, new Vector3d(0, 0, 1));
 
 				List<Point3d> points = new List<Point3d>();
-				
 
 				for (int j = 0; j < nrValues; j++)
 				{
-					Point3d pi = lines[i].PointAt((double)j / nrValues);
+					Point3d pi = lines[i].PointAt((double)j / (nrValues - 1));
 
-					//if (j == 0)
-					//	lines[i].PointAt((double)j / nrValues);
+					if (j == 0)
+						points.Add(lines[i].PointAt((double)j / (nrValues -1)));
 
 					//Translate point in normal direction
 					double scaledValue = (double)values[i][j].Value * scaleFactor;
 					pi.Transform(Transform.Translation(Vector3d.Multiply(normalVector, scaledValue)));
 					points.Add(pi);
 
-					//if (j == nrValues - 1)
-					//	points.Add(lines[i].PointAt((double)j / nrValues));
+					if (j == nrValues - 1)
+						points.Add(lines[i].PointAt((double)j / (nrValues - 1)));
 
 				}
 

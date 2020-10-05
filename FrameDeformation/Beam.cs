@@ -119,7 +119,7 @@ namespace FrameDeformation
 
 			for(int i = 0; i < NrEvalPoints; i++)
 			{
-				double xi = i / NrEvalPoints * ElemLength;
+				double xi = i / (NrEvalPoints - 1) * ElemLength;
 				LinearAlgebra.Vector<double> dBidx = LinearAlgebra.Vector<double>.Build.Dense(4);
 				dBidx[0] = 12 / Math.Pow(ElemLength, 3);
 				dBidx[1] = 6 / Math.Pow(ElemLength, 2);
@@ -151,7 +151,7 @@ namespace FrameDeformation
 
 			for (int i = 0; i < NrEvalPoints; i++)
 			{
-				double xi = i / NrEvalPoints * ElemLength;
+				double xi = i / (NrEvalPoints - 1) * ElemLength;
 				LinearAlgebra.Vector<double> Bi = LinearAlgebra.Vector<double>.Build.Dense(4);
 				Bi[0] = -6 / Math.Pow(ElemLength, 2) + 12 * xi / Math.Pow(ElemLength, 3);
 				Bi[1] = -4 / ElemLength + 6 * xi / Math.Pow(ElemLength, 2);

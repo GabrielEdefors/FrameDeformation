@@ -7,27 +7,18 @@ using Rhino.Geometry;
 
 namespace FrameDeformation
 {
-	class Node
+	class HingeNode
 	{
 		// Properties	
 		public Point3d Point { get; set; } = new Point3d();
-		public double? ConstraintX { get; set; } = null;
-		public double? ConstraintY { get; set; } = null;
-		public double? ConstraintR { get; set; } = null;
-		public double ForceX { get; set; } = 0.0;
-		public double ForceY { get; set; } = 0.0;
-		public double MomentR { get; set; } = 0.0;
-		public int? ID { get; set; } = null;
-		public bool Hinge { get; set; } = false;
-		public List<int> Dofs { get; set; } = new List<int>();
 
 		// Constructor
-		public Node(Point3d point)
+		public HingeNode(Point3d point)
 		{
 			Point = point;
 		}
 
-		public static bool operator ==(Node node1, Node node2)
+		public static bool operator ==(HingeNode node1, Node node2)
 		{
 			// If they have the same point they count as the same node
 			if (node1.Point.Equals(node2.Point))
@@ -37,7 +28,7 @@ namespace FrameDeformation
 			return false;
 		}
 
-		public static bool operator !=(Node node1, Node node2)
+		public static bool operator !=(HingeNode node1, Node node2)
 		{
 			// If they have the same point they count as the same node
 			if (node1.Point.Equals(node2.Point) == false)
