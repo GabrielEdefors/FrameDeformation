@@ -28,6 +28,9 @@ namespace FrameDeformation
 			pManager.AddNumberParameter("Youngs Modulus", "E", "Stiffness of the bar", GH_ParamAccess.list);
 			pManager.AddNumberParameter("Moment of Area", "I", "Second moment of area of the beam", GH_ParamAccess.list);
 			pManager.AddNumberParameter("Transverse Load", "Tranverse Load", "Magnitude of the uniformly distributed transverse load", GH_ParamAccess.list);
+			pManager[2].Optional = true;
+			pManager[3].Optional = true;
+			pManager[7].Optional = true;
 		}
 
 		protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
@@ -48,14 +51,14 @@ namespace FrameDeformation
 			List<HingeNode> hingeNodes = new List<HingeNode>();
 			List<double> transverseLoad = new List<double>();
 
-			DA.GetDataList("Line", lines);
-			DA.GetDataList("Area", A);
-			DA.GetDataList("Youngs Modulus", E);
-			DA.GetDataList("Moment of Area", I);
-			DA.GetDataList("Constraint Nodes", rNodes);
-			DA.GetDataList("Load Nodes", loadNodes);
-			DA.GetDataList("Hinge Nodes", hingeNodes);
-			DA.GetDataList("Transverse Load", transverseLoad);
+			DA.GetDataList(0, lines);
+			DA.GetDataList(4, A);
+			DA.GetDataList(5, E);
+			DA.GetDataList(6, I);
+			DA.GetDataList(1, rNodes);
+			DA.GetDataList(2, loadNodes);
+			DA.GetDataList(3, hingeNodes);
+			DA.GetDataList(7, transverseLoad);
 
 			// The length of A and E must be the same as lines
 			if ((A.Count != E.Count) | (E.Count != lines.Count) | (I.Count != lines.Count))
@@ -93,12 +96,42 @@ namespace FrameDeformation
 					{
 						node1 = existingNode;
 						unique1 = false;
+
+						foreach (HingeNode hingeNode in hingeNodes)
+						{
+							if (hingeNode == node1)
+							{
+								// If the node already exists and thus is connected to a beam a new fictive node is created
+								// that has the same translational dofs but different rotational dofs
+								Node node_1 = new Node(lines[i].From);
+								int id_node_1 = frameNodes.Count;
+								node1.ID = id_node_1;
+								node1.Dofs[0] = existingNode.Dofs[0];
+								node1.Dofs[1] = existingNode.Dofs[1];
+								node1.Dofs[2] = id_node_1 * 3;
+							}
+						}
 					}
 
 					if (node2 == existingNode)
 					{
 						node2 = existingNode;
 						unique2 = false;
+
+						foreach (HingeNode hingeNode in hingeNodes)
+						{
+							if (hingeNode == node2)
+							{
+								// If the node already exists and thus is connected to a beam a new fictive node is created
+								// that has the same translational dofs but different rotational dofs
+								Node node_2 = new Node(lines[i].From);
+								int id_node_2 = frameNodes.Count;
+								node2.ID = id_node_2;
+								node2.Dofs[0] = existingNode.Dofs[0];
+								node2.Dofs[1] = existingNode.Dofs[1];
+								node2.Dofs[2] = id_node_2 * 3;
+							}
+						}
 					}
 				}
 
@@ -107,7 +140,12 @@ namespace FrameDeformation
 				{
 					int id_node_1 = frameNodes.Count;
 					node1.ID = id_node_1;
-					node1.Dofs = System.Linq.Enumerable.Range(id_node_1 * 3, 3).ToList();
+
+					// Use the dofs that come after the last nodes dofs
+					if (frameNodes.Count == 0)
+						node1.Dofs = System.Linq.Enumerable.Range(0, 3).ToList();
+					else
+						node1.Dofs = System.Linq.Enumerable.Range(frameNodes[(frameNodes.Count-1)].Dofs[2] + 1, 3).ToList();
 
 					// Check if any boundary node or load node exist at current node
 					foreach (ContstraintNode rNode in rNodes)
@@ -132,15 +170,6 @@ namespace FrameDeformation
 						}
 					}
 
-					foreach (HingeNode hingeNode in hingeNodes)
-					{
-						if (hingeNode == node1)
-						{
-							node1.Hinge = true;
-
-						}
-					}
-
 					// Finally add the node
 					frameNodes.Add(node1);
 
@@ -150,7 +179,9 @@ namespace FrameDeformation
 				{
 					int id_node_2 = frameNodes.Count;
 					node2.ID = id_node_2;
-					node2.Dofs = System.Linq.Enumerable.Range(id_node_2 * 3, 3).ToList();
+
+					// Use the dofs that come after the last nodes dofs
+					node2.Dofs = System.Linq.Enumerable.Range(frameNodes[(frameNodes.Count - 1)].Dofs[2] + 1, 3).ToList();
 
 					// Check if any boundary node, load node or hinge node exist at current node
 					foreach (ContstraintNode rNode in rNodes)
@@ -176,19 +207,9 @@ namespace FrameDeformation
 						}
 					}
 
-					foreach (HingeNode hingeNode in hingeNodes)
-					{
-						if (hingeNode == node2)
-						{
-							node2.Hinge = true;
-
-						}
-					}
-
 					// Finally add the node
 					frameNodes.Add(node2);
 				}
-
 
 				// Create a beam object between the nodes
 				Beam beam = new Beam(node1, node2, A[i], E[i], I[i], transverseLoad[i]);
@@ -261,7 +282,7 @@ namespace FrameDeformation
 					for (int l = 0; l < 6; l++)
 					{
 						// Add contributions to the stiffness matrix
-						K[eDof[i][k], eDof[i][l]] = K[eDof[i][k], eDof[i][l]] + KElem[k, l];,
+						K[eDof[i][k], eDof[i][l]] = K[eDof[i][k], eDof[i][l]] + KElem[k, l];
 					}
 				}
 			}

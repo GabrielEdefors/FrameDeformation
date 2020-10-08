@@ -18,7 +18,6 @@ namespace FrameDeformation
 		public double ForceY { get; set; } = 0.0;
 		public double MomentR { get; set; } = 0.0;
 		public int? ID { get; set; } = null;
-		public bool Hinge { get; set; } = false;
 		public List<int> Dofs { get; set; } = new List<int>();
 
 		// Constructor
