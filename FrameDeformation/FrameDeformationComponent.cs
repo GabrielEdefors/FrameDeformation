@@ -97,41 +97,12 @@ namespace FrameDeformation
 						node1 = existingNode;
 						unique1 = false;
 
-						foreach (HingeNode hingeNode in hingeNodes)
-						{
-							if (hingeNode == node1)
-							{
-								// If the node already exists and thus is connected to a beam a new fictive node is created
-								// that has the same translational dofs but different rotational dofs
-								Node node_1 = new Node(lines[i].From);
-								int id_node_1 = frameNodes.Count;
-								node1.ID = id_node_1;
-								node1.Dofs[0] = existingNode.Dofs[0];
-								node1.Dofs[1] = existingNode.Dofs[1];
-								node1.Dofs[2] = id_node_1 * 3;
-							}
-						}
 					}
 
 					if (node2 == existingNode)
 					{
 						node2 = existingNode;
 						unique2 = false;
-
-						foreach (HingeNode hingeNode in hingeNodes)
-						{
-							if (hingeNode == node2)
-							{
-								// If the node already exists and thus is connected to a beam a new fictive node is created
-								// that has the same translational dofs but different rotational dofs
-								Node node_2 = new Node(lines[i].From);
-								int id_node_2 = frameNodes.Count;
-								node2.ID = id_node_2;
-								node2.Dofs[0] = existingNode.Dofs[0];
-								node2.Dofs[1] = existingNode.Dofs[1];
-								node2.Dofs[2] = id_node_2 * 3;
-							}
-						}
 					}
 				}
 
@@ -145,7 +116,7 @@ namespace FrameDeformation
 					if (frameNodes.Count == 0)
 						node1.Dofs = System.Linq.Enumerable.Range(0, 3).ToList();
 					else
-						node1.Dofs = System.Linq.Enumerable.Range(frameNodes[(frameNodes.Count-1)].Dofs[2] + 1, 3).ToList();
+						node1.Dofs = System.Linq.Enumerable.Range(frameNodes[(frameNodes.Count - 1)].Dofs[2] + 1, 3).ToList();
 
 					// Check if any boundary node or load node exist at current node
 					foreach (ContstraintNode rNode in rNodes)
@@ -173,6 +144,28 @@ namespace FrameDeformation
 					// Finally add the node
 					frameNodes.Add(node1);
 
+				}
+				else
+				{
+					foreach (HingeNode hingeNode in hingeNodes)
+					{
+						if (hingeNode == node1)
+						{
+							// If the node already exists and thus is connected to a beam a new fictive node is created
+							// that has the same translational dofs but different rotational dofs
+							Node existingNode = node1;
+							node1 = new Node(lines[i].From);
+							int id_node1 = frameNodes.Count;
+							node1.ID = id_node1;
+							node1.Dofs.Add(existingNode.Dofs[0]);
+							node1.Dofs.Add(existingNode.Dofs[1]);
+							node1.Dofs.Add(id_node1 * 3);
+
+							// Add the hinge node
+							frameNodes.Add(node1);
+
+						}
+					}
 				}
 
 				if (unique2)
@@ -210,6 +203,27 @@ namespace FrameDeformation
 					// Finally add the node
 					frameNodes.Add(node2);
 				}
+				else
+				{
+					foreach (HingeNode hingeNode in hingeNodes)
+					{
+						if (hingeNode == node2)
+						{
+							// If the node already exists and thus is connected to a beam a new fictive node is created
+							// that has the same translational dofs but different rotational dofs
+							Node existingNode = node2;
+							node2 = new Node(lines[i].From);
+							int id_node2 = frameNodes.Count;
+							node2.ID = id_node2;
+							node2.Dofs.Add(existingNode.Dofs[0]);
+							node2.Dofs.Add(existingNode.Dofs[1]);
+							node2.Dofs.Add(id_node2 * 3);
+
+							// Add the new hinge node
+							frameNodes.Add(node2);
+						}
+					}
+				}
 
 				// Create a beam object between the nodes
 				Beam beam = new Beam(node1, node2, A[i], E[i], I[i], transverseLoad[i]);
@@ -226,7 +240,8 @@ namespace FrameDeformation
 
 			}
 
-			int nDof = frameNodes.Count * 3;
+			// Calculate number of dofs of the whole system
+			int nDof = frameNodes[frameNodes.Count-1].Dofs[2] + 1;
 			int nElem = eDof.Count;
 
 			// Loop trough each node and construct a load vector and boundary vector
@@ -237,10 +252,10 @@ namespace FrameDeformation
 			for (int i = 0; i < frameNodes.Count; i++)
 			{
 
-				// Load vector
-				forceVector[i * 3] = frameNodes[i].ForceX;
-				forceVector[i * 3 + 1] = frameNodes[i].ForceY;
-				forceVector[i * 3 + 2] = frameNodes[i].MomentR;
+				// Force vector
+				forceVector[frameNodes[i].Dofs[0]] = frameNodes[i].ForceX;
+				forceVector[frameNodes[i].Dofs[1]] = frameNodes[i].ForceY;
+				forceVector[frameNodes[i].Dofs[2]] = frameNodes[i].MomentR;
 
 				// Boundary vector
 				for (int j = 0; j < frameNodes[i].Dofs.Count; j++)
