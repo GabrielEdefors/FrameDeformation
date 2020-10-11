@@ -61,9 +61,11 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AuxiliaryNode.cs" />
     <Compile Include="Beam.cs" />
     <Compile Include="ConstraintNode.cs" />
     <Compile Include="ConstraintNodeComponent.cs" />
+    <Compile Include="Frame.cs" />
     <Compile Include="FrameDeformationComponent.cs" />
     <Compile Include="FrameDeformationInfo.cs" />
     <Compile Include="HingeComponent.cs" />

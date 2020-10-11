@@ -7,16 +7,13 @@ using Rhino.Geometry;
 
 namespace FrameDeformation
 {
-	class HingeNode : AuxiliaryNode
+	class AuxiliaryNode
 	{
+		public Point3d Point { get; set; } = new Point3d();
 
-		// Constructor
-		public HingeNode(Point3d point)
-		{
-			Point = point;
-		}
+		public AuxiliaryNode() { }
 
-		public static bool operator ==(HingeNode node1, Node node2)
+		public static bool operator ==(AuxiliaryNode node1, Node node2)
 		{
 			// If they have the same point they count as the same node
 			if (node1.Point.Equals(node2.Point))
@@ -26,7 +23,7 @@ namespace FrameDeformation
 			return false;
 		}
 
-		public static bool operator !=(HingeNode node1, Node node2)
+		public static bool operator !=(AuxiliaryNode node1, Node node2)
 		{
 			// If they have the same point they count as the same node
 			if (node1.Point.Equals(node2.Point) == false)
@@ -35,7 +32,5 @@ namespace FrameDeformation
 			}
 			return false;
 		}
-
-
 	}
 }

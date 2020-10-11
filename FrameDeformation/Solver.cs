@@ -13,7 +13,7 @@ namespace FrameDeformation
 		{
 		}
 
-		public LinearAlgebra.Vector<double> solveEquations(LinearAlgebra.Matrix<double> stiffnessMatrix, LinearAlgebra.Vector<double> forceVector, List<int> boundaryDofs, List<double> boundaryConstraints)
+		public static LinearAlgebra.Vector<double> SolveLinearEquations(LinearAlgebra.Matrix<double> stiffnessMatrix, LinearAlgebra.Vector<double> forceVector, List<int> boundaryDofs, List<double> boundaryConstraints)
 		{
 			int nDof = forceVector.Count;
 

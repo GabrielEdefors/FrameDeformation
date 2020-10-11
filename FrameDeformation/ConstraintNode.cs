@@ -7,10 +7,9 @@ using Rhino.Geometry;
 
 namespace FrameDeformation
 {
-	class ContstraintNode
+	class ContstraintNode : AuxiliaryNode
 	{
 		// Properties	
-		public Point3d Point { get; set; } = new Point3d();
 		public double? ConstraintX { get; set; } = null;
 		public double? ConstraintY { get; set; } = null;
 		public double? ConstraintR { get; set; } = null;
@@ -26,27 +25,6 @@ namespace FrameDeformation
 			ConstraintY = constrainty;
 			ConstraintR = constraintr;
 		}
-
-		public static bool operator ==(ContstraintNode node1, Node node2)
-		{
-			// If they have the same point they count as the same node
-			if (node1.Point.Equals(node2.Point))
-			{
-				return true;
-			}
-			return false;
-		}
-
-		public static bool operator !=(ContstraintNode node1, Node node2)
-		{
-			// If they have the same point they count as the same node
-			if (node1.Point.Equals(node2.Point) == false)
-			{
-				return true;
-			}
-			return false;
-		}
-
 
 	}
 }

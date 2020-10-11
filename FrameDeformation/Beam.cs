@@ -16,7 +16,7 @@ namespace FrameDeformation
 		public double Area { get; set; } = 0.0;
 		public double StiffnessModulus { get; set; } = 0.0;
 		public double ElemLength { get; set; } = 0.0;
-		public double MomentArea { get; set; } = 0.0;
+		public double SecondMomentArea { get; set; } = 0.0;
 		public double NrEvalPoints { get; set; } = 100;
 		public double TransverseLoad { get; set; } = 0;
 
@@ -34,7 +34,7 @@ namespace FrameDeformation
 			Nodes.Add(node2);
 			StiffnessModulus = stiffnessModulus;
 			Area = area;
-			MomentArea = momentArea;
+			SecondMomentArea = momentArea;
 			TransverseLoad = transverseLoad;
 
 			// Compute the element lenght and the transformation matrix G
@@ -71,25 +71,25 @@ namespace FrameDeformation
 			K[3, 0] = -Area * StiffnessModulus / ElemLength;
 			K[3, 3] = Area * StiffnessModulus / ElemLength;
 
-			K[1, 1] = 12 * StiffnessModulus * MomentArea / Math.Pow(ElemLength, 3);
-			K[1, 2] = 6 * StiffnessModulus * MomentArea / Math.Pow(ElemLength, 2);
-			K[1, 4] = -12 * StiffnessModulus * MomentArea / Math.Pow(ElemLength, 3);
-			K[1, 5] = 6 * StiffnessModulus * MomentArea / Math.Pow(ElemLength, 2);
+			K[1, 1] = 12 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 3);
+			K[1, 2] = 6 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 2);
+			K[1, 4] = -12 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 3);
+			K[1, 5] = 6 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 2);
 
-			K[2, 1] = 6 * StiffnessModulus * MomentArea / Math.Pow(ElemLength, 2);
-			K[2, 2] = 4 * StiffnessModulus * MomentArea / ElemLength;
-			K[2, 4] = - 6 * StiffnessModulus * MomentArea / Math.Pow(ElemLength, 2);
-			K[2, 5] = 2 * StiffnessModulus * MomentArea / ElemLength;
+			K[2, 1] = 6 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 2);
+			K[2, 2] = 4 * StiffnessModulus * SecondMomentArea / ElemLength;
+			K[2, 4] = - 6 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 2);
+			K[2, 5] = 2 * StiffnessModulus * SecondMomentArea / ElemLength;
 
-			K[4, 1] = - 12 * StiffnessModulus * MomentArea / Math.Pow(ElemLength, 3);
-			K[4, 2] = - 6 * StiffnessModulus * MomentArea / Math.Pow(ElemLength, 2);
-			K[4, 4] = 12 * StiffnessModulus * MomentArea / Math.Pow(ElemLength, 3);
-			K[4, 5] = - 6 * StiffnessModulus * MomentArea / Math.Pow(ElemLength, 2);
+			K[4, 1] = - 12 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 3);
+			K[4, 2] = - 6 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 2);
+			K[4, 4] = 12 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 3);
+			K[4, 5] = - 6 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 2);
 
-			K[5, 1] = 6 * StiffnessModulus * MomentArea / Math.Pow(ElemLength, 2);
-			K[5, 2] = 2 * StiffnessModulus * MomentArea / ElemLength;
-			K[5, 4] = - 6 * StiffnessModulus * MomentArea / Math.Pow(ElemLength, 2);
-			K[5, 5] = 4 * StiffnessModulus * MomentArea / ElemLength;
+			K[5, 1] = 6 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 2);
+			K[5, 2] = 2 * StiffnessModulus * SecondMomentArea / ElemLength;
+			K[5, 4] = - 6 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 2);
+			K[5, 5] = 4 * StiffnessModulus * SecondMomentArea / ElemLength;
 
 			// Tranform to global element stiffness matrix using transformation matrix G
 			LinearAlgebra.Matrix<double> GT = G.Transpose();
@@ -140,7 +140,7 @@ namespace FrameDeformation
 				// Particular solution for uniformly distributed load
 				double Vpi = -TransverseLoad * (xi - ElemLength / 2);
 
-				V.Add(-StiffnessModulus * MomentArea * (dBidx.DotProduct(localElemDispBeam)) + Vpi);
+				V.Add(-StiffnessModulus * SecondMomentArea * (dBidx.DotProduct(localElemDispBeam)) + Vpi);
 			}
 			return V;
 		}
@@ -172,7 +172,7 @@ namespace FrameDeformation
 				// Particular solution for uniformly distributed load
 				double Mpi = TransverseLoad * (xi * xi / 2 - ElemLength * xi / 2 + ElemLength * ElemLength / 12);
 
-				M.Add(StiffnessModulus * MomentArea * (Bi.DotProduct(localElemDispBeam)) + Mpi);
+				M.Add(StiffnessModulus * SecondMomentArea * (Bi.DotProduct(localElemDispBeam)) + Mpi);
 			}
 
 			return M;
