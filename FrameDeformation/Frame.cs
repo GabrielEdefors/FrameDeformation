@@ -10,27 +10,29 @@ namespace FrameDeformation
 {
 	class Frame
 	{
-		public List<Line> Lines = new List<Line>();
-		public List<Node> Nodes = new List<Node>();
-		public List<ContstraintNode> RNodes = new List<ContstraintNode>();
-		public List<LoadNode> LoadNodes = new List<LoadNode>();
-		public List<HingeNode> HingeNodes = new List<HingeNode>();
-		public List<Beam> Beams = new List<Beam>();
+		public List<Line> Lines { get; set; } = new List<Line>();
+		public List<Node> Nodes { get; set; } = new List<Node>();
+		public List<ContstraintNode> RNodes { get; set; } = new List<ContstraintNode>();
+		public List<LoadNode> LoadNodes { get; set; } = new List<LoadNode>();
+		public List<HingeNode> HingeNodes { get; set; } = new List<HingeNode>();
+		public List<Beam> Beams { get; set; } = new List<Beam>();
 
-		public List<double> StiffnessModulus = new List<double>();
-		public List<double> SecondMomentArea = new List<double>();
-		public List<double> Area = new List<double>();
-		public List<double> TransverseLoads = new List<double>();
-		public List<double?> BoundaryConstraints = new List<double?>();
+		public List<double> StiffnessModulus { get; set; } = new List<double>();
+		public List<double> SecondMomentArea { get; set; } = new List<double>();
+		public List<double> Area { get; set; } = new List<double>();
+		public List<double> TransverseLoads { get; set; } = new List<double>();
+		public List<double?> BoundaryConstraints { get; set; } = new List<double?>();
 
-		public List<List<int>> eDof = new List<List<int>>();
+		public List<List<int>> EDof { get; set; } = new List<List<int>>();
 
-		public int NDof = 0;
-		public int NElem = 0;
-		public List<int> BoundaryDofs = new List<int>();
+		public int NDof { get; set; } = 0;
+		public int NElem { get; set; } = 0;
+		public List<int> BoundaryDofs { get; set; } = new List<int>();
+		public ISolveStrategy SolveStrategy { get; set; }
 
-		private LinearAlgebra.Vector<double> ForceVector = LinearAlgebra.Vector<double>.Build.Dense(0);
-		private LinearAlgebra.Matrix<double> K = LinearAlgebra.Matrix<double>.Build.Dense(0, 0);
+		private LinearAlgebra.Vector<double> ForceVector { get; set; } = LinearAlgebra.Vector<double>.Build.Dense(0);
+		private LinearAlgebra.Matrix<double> K { get; set; } = LinearAlgebra.Matrix<double>.Build.Dense(0, 0);
+
 
 		public Frame(List<Line> lines,
 					 List<ContstraintNode> rNodes,
@@ -39,7 +41,8 @@ namespace FrameDeformation
 					 List<double> E,
 					 List<double> I,
 					 List<double> A,
-					 List<double> transverseLoads)
+					 List<double> transverseLoads,
+					 ISolveStrategy solveStrategy)
 		{
 			Lines = lines;
 			RNodes = rNodes;
@@ -49,6 +52,7 @@ namespace FrameDeformation
 			SecondMomentArea = I;
 			Area = A;
 			TransverseLoads = transverseLoads;
+			SolveStrategy = solveStrategy;
 
 		}
 
@@ -216,13 +220,13 @@ namespace FrameDeformation
 				List<int> eDofRow = new List<int>();
 				eDofRow.AddRange(dofs1);
 				eDofRow.AddRange(dofs2);
-				eDof.Add(eDofRow);
+				EDof.Add(eDofRow);
 
 			}
 
 			// Calculate number of dofs of the whole system
 			NDof = Nodes[Nodes.Count - 1].Dofs[2] + 1;
-			NElem = eDof.Count;
+			NElem = EDof.Count;
 		}
 
 		public void CreateForceVector()
@@ -282,21 +286,46 @@ namespace FrameDeformation
 				for (int k = 0; k < 6; k++)
 				{
 					// Add contributions to the load vector
-					ForceVector[eDof[i][k]] = ForceVector[eDof[i][k]] + fl[k];
+					ForceVector[EDof[i][k]] = ForceVector[EDof[i][k]] + fl[k];
 
 					for (int l = 0; l < 6; l++)
 					{
 						// Add contributions to the stiffness matrix
-						K[eDof[i][k], eDof[i][l]] = K[eDof[i][k], eDof[i][l]] + KElem[k, l];
+						K[EDof[i][k], EDof[i][l]] = K[EDof[i][k], EDof[i][l]] + KElem[k, l];
 					}
 				}
 			}
 		}
 		public void CalculateDisplacements()
 		{
-			LinearAlgebra.Vector<double> displacements = Solver.SolveLinearEquations(K, ForceVector, BoundaryDofs, BoundaryConstraints.Cast<double>().ToList());
+			LinearAlgebra.Vector<double> displacements = SolveStrategy.Solve(K, ForceVector, BoundaryDofs, BoundaryConstraints.Cast<double>().ToList());
+
+			// Save the displacements for each beam
+			for (int i = 0; i < NElem; i++)
+			{
+				Beams[i].Solution.NodalDisplacements.Add(displacements[EDof[i][0]]);
+				Beams[i].Solution.NodalDisplacements.Add(displacements[EDof[i][1]]);
+				Beams[i].Solution.NodalDisplacements.Add(displacements[EDof[i][2]]);
+				Beams[i].Solution.NodalDisplacements.Add(displacements[EDof[i][3]]);
+				Beams[i].Solution.NodalDisplacements.Add(displacements[EDof[i][4]]);
+				Beams[i].Solution.NodalDisplacements.Add(displacements[EDof[i][5]]);
+			}
 		}
 
+		public void ComputeSectionalForces()
+		{
+
+
+			for (int i = 0; i < NElem; i++)
+			{
+
+				// Calculate element shear force
+				Beams[i].Solution.ShearForceField = Beams[i].ComputeShearForce(Beams[i].Solution.NodalDisplacements);
+				Beams[i].Solution.BendingMomentField = Beams[i].ComputeBendingMoment(Beams[i].Solution.NodalDisplacements);
+
+			}
+
+		}
 
 	}
 }

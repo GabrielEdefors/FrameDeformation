@@ -19,8 +19,9 @@ namespace FrameDeformation
 		public double SecondMomentArea { get; set; } = 0.0;
 		public double NrEvalPoints { get; set; } = 100;
 		public double TransverseLoad { get; set; } = 0;
+		public Solution Solution { get; set; }
+		private LinearAlgebra.Matrix<double> G { get; set; } = LinearAlgebra.Matrix<double>.Build.Dense(6, 6);
 
-		private LinearAlgebra.Matrix<double> G = LinearAlgebra.Matrix<double>.Build.Dense(6, 6);
 
 		// Constructor
 		public Beam(Node node1,
@@ -36,6 +37,7 @@ namespace FrameDeformation
 			Area = area;
 			SecondMomentArea = momentArea;
 			TransverseLoad = transverseLoad;
+			Solution = new Solution();
 
 			// Compute the element lenght and the transformation matrix G
 			double x1 = Nodes[0].Point.X;

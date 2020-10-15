@@ -66,7 +66,8 @@ namespace FrameDeformation
 			}
 
 			// Create a frame and create beam and node objects
-			Frame frame = new Frame(lines, rNodes, loadNodes, hingeNodes, E, I, A, transverseLoad);
+			ISolveStrategy solveStrategy = new SolveLinear();
+			Frame frame = new Frame(lines, rNodes, loadNodes, hingeNodes, E, I, A, transverseLoad, solveStrategy);
 			frame.EstablishTopology();
 
 			// Calculate force vector and displacement lists
@@ -76,28 +77,19 @@ namespace FrameDeformation
 			// Calculate the displacements
 			frame.CalculateDisplacements();
 
-			// Loop trough each beam and compute the shear forces and bending moments and save in branches for each element
+			// Compute Sectional forces and put in branches for each element
+			frame.ComputeSectionalForces();
+
 			var VTree = new Grasshopper.DataTree<double>();
 			var MTree = new Grasshopper.DataTree<double>();
 
-			for (int i = 0; i < nElem; i++)
+			for(int i = 0; i < frame.Beams.Count; i++) 
 			{
-				double disp1 = displacements[eDof[i][0]];
-				double disp2 = displacements[eDof[i][1]];
-				double disp3 = displacements[eDof[i][2]];
-				double disp4 = displacements[eDof[i][3]];
-				double disp5 = displacements[eDof[i][4]];
-				double disp6 = displacements[eDof[i][5]];
-
-				// Calculate element shear force
-				List<double> VBranch = frameBeams[i].ComputeShearForce(new List<double> { disp1, disp2, disp3, disp4, disp5, disp6 });
-				List<double> MBranch = frameBeams[i].ComputeBendingMoment(new List<double> { disp1, disp2, disp3, disp4, disp5, disp6 });
-
-				// Add the respective tree
 				GH_Path pth = new GH_Path(i);
-				VTree.AddRange(VBranch, pth);
-				MTree.AddRange(MBranch, pth);
+				VTree.AddRange(frame.Beams[i].Solution.ShearForceField, pth);
+				MTree.AddRange(frame.Beams[i].Solution.BendingMomentField, pth);
 			}
+
 
 			DA.SetDataTree(0, VTree);
 			DA.SetDataTree(1, MTree);
