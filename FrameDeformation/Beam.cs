@@ -21,6 +21,9 @@ namespace FrameDeformation
 		public double TransverseLoad { get; set; } = 0;
 		public Solution Solution { get; set; }
 		private LinearAlgebra.Matrix<double> G { get; set; } = LinearAlgebra.Matrix<double>.Build.Dense(6, 6);
+		private LinearAlgebra.Matrix<double> K { get; set; } = LinearAlgebra.Matrix<double>.Build.Dense(6, 6);
+		private LinearAlgebra.Matrix<double> Kg { get; set; } = LinearAlgebra.Matrix<double>.Build.Dense(6, 6);
+
 
 
 		// Constructor
@@ -66,7 +69,6 @@ namespace FrameDeformation
 
 		public LinearAlgebra.Matrix<double> ComputeStiffnessMatrix()
 		{
-			LinearAlgebra.Matrix<double> K = LinearAlgebra.Matrix<double>.Build.Dense(6, 6);
 
 			K[0, 0] = Area * StiffnessModulus / ElemLength;
 			K[0, 3] = -Area * StiffnessModulus / ElemLength;
@@ -180,5 +182,93 @@ namespace FrameDeformation
 			return M;
 		}
 
+		public List<double> ComputeNormalForce(List<double> globalElemDisp)
+		{
+			List<double> N = new List<double> { };
+
+			for (int i = 0; i < NrEvalPoints; i++)
+			{
+				LinearAlgebra.Vector<double> Bi = LinearAlgebra.Vector<double>.Build.Dense(2);
+				Bi[0] = -1 / ElemLength;
+				Bi[1] = 1 / ElemLength;
+
+				// Transform from global to local coordinates
+				LinearAlgebra.Vector<double> globalElemDispVector = LinearAlgebra.Vector<double>.Build.Dense(globalElemDisp.ToArray());
+				LinearAlgebra.Vector<double> localElemDisp = G.Multiply(globalElemDispVector);
+
+				// Extract displacements associated to bar dofs
+				LinearAlgebra.Vector<double> localElemDispBar = LinearAlgebra.Vector<double>.Build.Dense(2);
+				localElemDispBar[0] = localElemDisp[0];
+				localElemDispBar[1] = localElemDisp[3];
+
+				double Ni = StiffnessModulus * Area / ElemLength * Bi.DotProduct(localElemDispBar);
+
+				N.Add(Ni);
+			}
+			return N;
+		}
+
+		public LinearAlgebra.Matrix<double> ComputeNonLinearStiffnessMatrix()
+		{
+
+			// Bar stiffness
+			Kg[0, 0] = Area * StiffnessModulus / ElemLength;
+			Kg[0, 3] = -Area * StiffnessModulus / ElemLength;
+			Kg[3, 0] = -Area * StiffnessModulus / ElemLength;
+			Kg[3, 3] = Area * StiffnessModulus / ElemLength;
+
+			// Beam stiffness affected by normal force
+			double N = Solution.NormalForceField[0];
+			double rho = -N * ElemLength * ElemLength / 
+				         (Math.PI * Math.PI * StiffnessModulus * SecondMomentArea);
+			double k = Math.PI / ElemLength * Math.Sqrt(-rho);
+
+			// Parameters derived from N
+			double phi1; double phi2; double phi3; double phi4; double phi5;
+
+			if (N < 0)
+			{
+				phi1 = k * ElemLength / 2 * Math.Cos(k * ElemLength / 2) / Math.Sin(k * ElemLength / 2);
+				phi2 = k * k * ElemLength * ElemLength / (12 * (1 - phi1));
+				phi3 = phi1 / 4 + 3 * phi2 / 4;
+				phi4 = -phi1 / 2 + 3 * phi2 / 2;
+				phi5 = phi1 * phi2;
+			}
+			else
+			{
+				phi1 = k * ElemLength / 2 * Math.Cos(k * ElemLength / 2) / Math.Sin(k * ElemLength / 2);
+				phi2 = -k * k * ElemLength * ElemLength / (12 * (1 - phi1));
+				phi3 = phi1 / 4 + 3 * phi2 / 4;
+				phi4 = -phi1 / 2 + 3 * phi2 / 2;
+				phi5 = phi1 * phi2;
+			}
+
+
+			Kg[1, 1] = 12 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 3) * phi5;
+			Kg[1, 2] = 6 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 2) * phi2;
+			Kg[1, 4] = -12 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 3) * phi5;
+			Kg[1, 5] = 6 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 2) * phi2;
+
+			Kg[2, 1] = 6 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 2) * phi2;
+			Kg[2, 2] = 4 * StiffnessModulus * SecondMomentArea / ElemLength * phi3;
+			Kg[2, 4] = -6 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 2) * phi2;
+			Kg[2, 5] = 2 * StiffnessModulus * SecondMomentArea / ElemLength * phi4;
+
+			Kg[4, 1] = -12 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 3) * phi5;
+			Kg[4, 2] = -6 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 2) * phi2;
+			Kg[4, 4] = 12 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 3) * phi5;
+			Kg[4, 5] = -6 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 2) * phi2;
+
+			Kg[5, 1] = 6 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 2) * phi2;
+			Kg[5, 2] = 2 * StiffnessModulus * SecondMomentArea / ElemLength * phi4;
+			Kg[5, 4] = -6 * StiffnessModulus * SecondMomentArea / Math.Pow(ElemLength, 2) * phi2;
+			Kg[5, 5] = 4 * StiffnessModulus * SecondMomentArea / ElemLength * phi3;
+
+			// Tranform to global element stiffness matrix using transformation matrix G
+			LinearAlgebra.Matrix<double> GT = G.Transpose();
+			LinearAlgebra.Matrix<double> KgGlobal = (GT.Multiply(Kg)).Multiply(G);
+
+			return KgGlobal;
+		}
 	}
 }

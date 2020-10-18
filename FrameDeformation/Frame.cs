@@ -30,8 +30,8 @@ namespace FrameDeformation
 		public List<int> BoundaryDofs { get; set; } = new List<int>();
 		public ISolveStrategy SolveStrategy { get; set; }
 
-		private LinearAlgebra.Vector<double> ForceVector { get; set; } = LinearAlgebra.Vector<double>.Build.Dense(0);
-		private LinearAlgebra.Matrix<double> K { get; set; } = LinearAlgebra.Matrix<double>.Build.Dense(0, 0);
+		public LinearAlgebra.Vector<double> ForceVector { get; set; }
+		public LinearAlgebra.Matrix<double> K { get; set; }
 
 
 		public Frame(List<Line> lines,
@@ -231,16 +231,16 @@ namespace FrameDeformation
 
 		public void CreateForceVector()
 		{
-
+			ForceVector = LinearAlgebra.Vector<double>.Build.Dense(NDof);
 			for (int i = 0; i < Nodes.Count; i++)
 			{
 
-				LinearAlgebra.Vector<double> ForceVector = LinearAlgebra.Vector<double>.Build.Dense(NDof);
 				ForceVector[Nodes[i].Dofs[0]] = Nodes[i].ForceX;
 				ForceVector[Nodes[i].Dofs[1]] = Nodes[i].ForceY;
 				ForceVector[Nodes[i].Dofs[2]] = Nodes[i].MomentR;
 
 			}
+
 		}
 
 		public void CreateBoundaryVector()
@@ -275,7 +275,7 @@ namespace FrameDeformation
 		{
 
 			// Loop trough each element, compute local stiffness matrix and assemble into global stiffness matrix
-			LinearAlgebra.Matrix<double> K = LinearAlgebra.Matrix<double>.Build.Dense(NDof, NDof);
+			K = LinearAlgebra.Matrix<double>.Build.Dense(NDof, NDof);
 
 			for (int i = 0; i < Beams.Count; i++)
 			{
@@ -322,10 +322,28 @@ namespace FrameDeformation
 				// Calculate element shear force
 				Beams[i].Solution.ShearForceField = Beams[i].ComputeShearForce(Beams[i].Solution.NodalDisplacements);
 				Beams[i].Solution.BendingMomentField = Beams[i].ComputeBendingMoment(Beams[i].Solution.NodalDisplacements);
+				Beams[i].Solution.NormalForceField = Beams[i].ComputeNormalForce(Beams[i].Solution.NodalDisplacements);
 
 			}
 
 		}
 
+		/// <summary>
+		/// Computes the buckling modes and corresponding buckling factor. The normal forces in reference system are calculated using linear analysis, i.e. small displacements are assumed
+		/// </summary>
+		public void CalculateBucklingModes()
+		{
+			if (Beams[0].Solution.NormalForceField == null)
+			{
+				throw new InvalidOperationException("Normal forces must be computed before buckling analysis can be performed!");
+			}
+
+			// Calcualte the gemetric non linear stiffness matrix for the reference load
+			for (int i = 0; i < NElem; i++)
+			{
+				Beams[i].ComputeNonLinearStiffnessMatrix();
+			}
+		}
+		
 	}
 }

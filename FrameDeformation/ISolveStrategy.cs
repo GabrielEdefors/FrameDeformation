@@ -11,5 +11,6 @@ namespace FrameDeformation
 	{
 		Vector<double> Solve(Matrix<double> stiffnessMatrix, Vector<double> forceVector, List<int> boundaryDofs, List<double> boundaryConstraints);
 		Vector<double> Solve(Matrix<double> stiffnessMatrix, Vector<double> forceVector, List<int> boundaryDofs, List<double> boundaryConstraints, List<double> normalForces);
+	
 	}
 }

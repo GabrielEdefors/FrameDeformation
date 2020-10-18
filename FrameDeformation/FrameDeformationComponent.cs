@@ -34,7 +34,8 @@ namespace FrameDeformation
 
 		protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
 		{
-			pManager.AddGenericParameter("Shear Diagram", "shear diagram", "shear diagram", GH_ParamAccess.item);
+			pManager.AddGenericParameter("Normal Force Diagram", "normal force diagram", "normal force diagram", GH_ParamAccess.item);
+			pManager.AddGenericParameter("Shear Force Diagram", "shear force diagram", "shear froce diagram", GH_ParamAccess.item);
 			pManager.AddGenericParameter("Moment Diagram", "moment diagram", "moment diagram", GH_ParamAccess.item);
 		}
 
@@ -66,7 +67,7 @@ namespace FrameDeformation
 			}
 
 			// Create a frame and create beam and node objects
-			ISolveStrategy solveStrategy = new SolveLinear();
+			ISolveStrategy solveStrategy = new LinearStrategy();
 			Frame frame = new Frame(lines, rNodes, loadNodes, hingeNodes, E, I, A, transverseLoad, solveStrategy);
 			frame.EstablishTopology();
 
@@ -75,24 +76,27 @@ namespace FrameDeformation
 			frame.CreateForceVector();
 
 			// Calculate the displacements
+			frame.AssembleSystem();
 			frame.CalculateDisplacements();
 
 			// Compute Sectional forces and put in branches for each element
 			frame.ComputeSectionalForces();
 
+			var NTree = new Grasshopper.DataTree<double>();
 			var VTree = new Grasshopper.DataTree<double>();
 			var MTree = new Grasshopper.DataTree<double>();
 
 			for(int i = 0; i < frame.Beams.Count; i++) 
 			{
 				GH_Path pth = new GH_Path(i);
+				NTree.AddRange(frame.Beams[i].Solution.NormalForceField, pth);
 				VTree.AddRange(frame.Beams[i].Solution.ShearForceField, pth);
 				MTree.AddRange(frame.Beams[i].Solution.BendingMomentField, pth);
 			}
 
-
-			DA.SetDataTree(0, VTree);
-			DA.SetDataTree(1, MTree);
+			DA.SetDataTree(0, NTree);
+			DA.SetDataTree(1, VTree);
+			DA.SetDataTree(2, MTree);
 
 		}
 

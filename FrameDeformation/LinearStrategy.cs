@@ -7,7 +7,7 @@ using MathNet.Numerics.LinearAlgebra;
 
 namespace FrameDeformation
 {
-	class SolveLinear : ISolveStrategy
+	class LinearStrategy : ISolveStrategy
 	{
 		public Vector<double> Solve(Matrix<double> stiffnessMatrix, Vector<double> forceVector, List<int> boundaryDofs, List<double> boundaryConstraints)
 		{
