@@ -31,7 +31,8 @@ namespace FrameDeformation
 		public ISolveStrategy SolveStrategy { get; set; }
 
 		public LinearAlgebra.Vector<double> ForceVector { get; set; }
-		public LinearAlgebra.Matrix<double> K { get; set; }
+		public LinearStiffnessMatrix K { get; set; }
+		public GeometricNonlinearStiffnessMatrix KNonLinear { get; set; }
 
 
 		public Frame(List<Line> lines,
@@ -275,29 +276,27 @@ namespace FrameDeformation
 		{
 
 			// Loop trough each element, compute local stiffness matrix and assemble into global stiffness matrix
-			K = LinearAlgebra.Matrix<double>.Build.Dense(NDof, NDof);
+			K = new LinearStiffnessMatrix(NDof);
 
 			for (int i = 0; i < Beams.Count; i++)
 			{
 				LinearAlgebra.Matrix<double> KElem = Beams[i].ComputeStiffnessMatrix();
 				LinearAlgebra.Vector<double> fl = Beams[i].ComputeLoadVector();
 
-				// Assemble
+				// Add element contributions to the load vector
 				for (int k = 0; k < 6; k++)
 				{
 					// Add contributions to the load vector
 					ForceVector[EDof[i][k]] = ForceVector[EDof[i][k]] + fl[k];
-
-					for (int l = 0; l < 6; l++)
-					{
-						// Add contributions to the stiffness matrix
-						K[EDof[i][k], EDof[i][l]] = K[EDof[i][k], EDof[i][l]] + KElem[k, l];
-					}
 				}
+
+				// Add element contributions to the stiffness matrix
+				K.AddElementContribution(EDof[i], KElem);
 			}
 		}
 		public void CalculateDisplacements()
 		{
+			K.ComputeReducedMatrix(BoundaryDofs);
 			LinearAlgebra.Vector<double> displacements = SolveStrategy.Solve(K, ForceVector, BoundaryDofs, BoundaryConstraints.Cast<double>().ToList());
 
 			// Save the displacements for each beam
@@ -318,12 +317,10 @@ namespace FrameDeformation
 
 			for (int i = 0; i < NElem; i++)
 			{
-
 				// Calculate element shear force
 				Beams[i].Solution.ShearForceField = Beams[i].ComputeShearForce(Beams[i].Solution.NodalDisplacements);
 				Beams[i].Solution.BendingMomentField = Beams[i].ComputeBendingMoment(Beams[i].Solution.NodalDisplacements);
 				Beams[i].Solution.NormalForceField = Beams[i].ComputeNormalForce(Beams[i].Solution.NodalDisplacements);
-
 			}
 
 		}
@@ -338,10 +335,14 @@ namespace FrameDeformation
 				throw new InvalidOperationException("Normal forces must be computed before buckling analysis can be performed!");
 			}
 
+			KNonLinear = new GeometricNonlinearStiffnessMatrix(NDof);
+
 			// Calcualte the gemetric non linear stiffness matrix for the reference load
 			for (int i = 0; i < NElem; i++)
 			{
 				Beams[i].ComputeNonLinearStiffnessMatrix();
+
+				// Next time, assemble in the non linear parts
 			}
 		}
 		

@@ -9,8 +9,8 @@ namespace FrameDeformation
 {
 	interface ISolveStrategy
 	{
-		Vector<double> Solve(Matrix<double> stiffnessMatrix, Vector<double> forceVector, List<int> boundaryDofs, List<double> boundaryConstraints);
-		Vector<double> Solve(Matrix<double> stiffnessMatrix, Vector<double> forceVector, List<int> boundaryDofs, List<double> boundaryConstraints, List<double> normalForces);
+		Vector<double> Solve(LinearStiffnessMatrix stiffnessMatrix, Vector<double> forceVector, List<int> boundaryDofs, List<double> boundaryConstraints);
+		Vector<double> Solve(LinearStiffnessMatrix stiffnessMatrix, Vector<double> forceVector, List<int> boundaryDofs, List<double> boundaryConstraints, List<double> normalForces);
 	
 	}
 }

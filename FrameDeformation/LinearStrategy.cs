@@ -9,7 +9,7 @@ namespace FrameDeformation
 {
 	class LinearStrategy : ISolveStrategy
 	{
-		public Vector<double> Solve(Matrix<double> stiffnessMatrix, Vector<double> forceVector, List<int> boundaryDofs, List<double> boundaryConstraints)
+		public Vector<double> Solve(LinearStiffnessMatrix stiffnessMatrix, Vector<double> forceVector, List<int> boundaryDofs, List<double> boundaryConstraints)
 		{
 			int nDof = forceVector.Count;
 
@@ -26,19 +26,13 @@ namespace FrameDeformation
 				displacementVector[boundaryDofs[i]] = boundaryConstraints[i];
 			}
 
-			// Pick out part of matrix corresponding to known forces
+			// Pick out part known elements of force vector
 			int nrUnknownDofs = unknownDofs.Count;
-			Matrix<double> unknownK = Matrix<double>.Build.Dense(nrUnknownDofs, nrUnknownDofs);
 			Vector<double> knownForces = Vector<double>.Build.Dense(unknownDofs.Count);
 
 			for (int i = 0; i < unknownDofs.Count; i++)
-			{
-				for (int j = 0; j < unknownDofs.Count; j++)
-				{
-					unknownK[i, j] = stiffnessMatrix[unknownDofs[i], unknownDofs[j]];
-				}
 				knownForces[i] = forceVector[unknownDofs[i]];
-			}
+
 
 			Matrix<double> unkownKnownK = Matrix<double>.Build.Dense(nrUnknownDofs, boundaryDofs.Count);
 
@@ -47,13 +41,13 @@ namespace FrameDeformation
 			{
 				for (int j = 0; j < boundaryDofs.Count; j++)
 				{
-					unkownKnownK[i, j] = stiffnessMatrix[unknownDofs[i], boundaryDofs[j]];
+					unkownKnownK[i, j] = stiffnessMatrix.ReducedK[unknownDofs[i], boundaryDofs[j]];
 				}
 				knownForces[i] = forceVector[unknownDofs[i]];
 			}
 
 			// Solve for the unknown displacements 
-			Vector<double> unknownDisplacements = unknownK.Inverse().Multiply(knownForces.Subtract(unkownKnownK.Multiply(Vector<double>.Build.Dense(boundaryConstraints.ToArray()))));
+			Vector<double> unknownDisplacements = stiffnessMatrix.ReducedK.Inverse().Multiply(knownForces.Subtract(unkownKnownK.Multiply(Vector<double>.Build.Dense(boundaryConstraints.ToArray()))));
 
 			// Insert the calculated displacements
 			for (int i = 0; i < unknownDofs.Count; i++)
@@ -64,7 +58,7 @@ namespace FrameDeformation
 			return displacementVector;
 		}
 
-		public Vector<double> Solve(Matrix<double> stiffnessMatrix, Vector<double> forceVector, List<int> boundaryDofs, List<double> boundaryConstraints, List<double> normalForces)
+		public Vector<double> Solve(LinearStiffnessMatrix stiffnessMatrix, Vector<double> forceVector, List<int> boundaryDofs, List<double> boundaryConstraints, List<double> normalForces)
 		{
 			throw new NotImplementedException();
 		}
