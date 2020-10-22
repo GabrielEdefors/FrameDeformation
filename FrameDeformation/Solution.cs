@@ -13,7 +13,10 @@ namespace FrameDeformation
 		public List<double> NormalForceField { get; set; } = new List<double>();
 		public List<double> ShearForceField { get; set; } = new List<double>();
 		public List<double> BendingMomentField { get; set; } = new List<double>();
-		public Dictionary<int, Dictionary<double, List<double>>> BucklingModes { get; set; } = new Dictionary<int, Dictionary<double, List<double>>>();
+		public List<double> LoadFactors { get; set; } = new List<double>();
+		public List<List<double>> NodalBucklingDisplacements { get; set; } = new List<List<double>>();
+		public List<List<double>> BucklingDisplacementFields { get; set; } = new List<List<double>>();
+
 
 		public Solution() { }
 	}

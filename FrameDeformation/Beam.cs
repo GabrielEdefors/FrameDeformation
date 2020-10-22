@@ -208,6 +208,15 @@ namespace FrameDeformation
 			return N;
 		}
 
+		public List<double> ComputeDisplacements(List<double> globalElemDisp)
+		{
+			List<double> V = new List<double>();
+
+			// Add logic for transverse displacments
+
+			return V;
+		}
+
 		public LinearAlgebra.Matrix<double> ComputeNonLinearStiffnessMatrix()
 		{
 

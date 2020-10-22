@@ -35,7 +35,7 @@ namespace FrameDeformation
 		public Vector<double> ForceVector { get; set; }
 		public LinearStiffnessMatrix K { get; set; }
 		public GeometricNonlinearStiffnessMatrix KNonLinear { get; set; }
-		public Dictionary<double, List<double>> BucklingModes { get; set; } = new Dictionary<double, List<double>>();
+		public List<double> NodalDisplacements { get; set; } = new List<double>();
 
 
 		public Frame(List<Line> lines,
@@ -300,17 +300,13 @@ namespace FrameDeformation
 		public void CalculateDisplacements()
 		{
 			K.ComputeReducedMatrix(BoundaryDofs);
-			Vector<double> displacements = SolveStrategy.Solve(K, ForceVector, BoundaryDofs, BoundaryConstraints.Cast<double>().ToList());
+			NodalDisplacements = SolveStrategy.Solve(K, ForceVector, BoundaryDofs, BoundaryConstraints.Cast<double>().ToList()).ToList();
 
 			// Save the displacements for each beam
 			for (int i = 0; i < NElem; i++)
 			{
-				Beams[i].Solution.NodalDisplacements.Add(displacements[EDof[i][0]]);
-				Beams[i].Solution.NodalDisplacements.Add(displacements[EDof[i][1]]);
-				Beams[i].Solution.NodalDisplacements.Add(displacements[EDof[i][2]]);
-				Beams[i].Solution.NodalDisplacements.Add(displacements[EDof[i][3]]);
-				Beams[i].Solution.NodalDisplacements.Add(displacements[EDof[i][4]]);
-				Beams[i].Solution.NodalDisplacements.Add(displacements[EDof[i][5]]);
+				for (int j = 0; j < EDof[i].Count; j++)
+					Beams[i].Solution.NodalDisplacements.Add(NodalDisplacements[EDof[i][j]]);
 			}
 		}
 
@@ -357,16 +353,22 @@ namespace FrameDeformation
 				List<double> eigenVector = eigenVectors.Column(i).ToList();
 
 				// Add the prescribed displacements to the result
-				
+				List<int> allDofs = Enumerable.Range(0, NDof).ToList();
+				List<int> unknownDofs = allDofs.Except(BoundaryDofs).ToList();
+				for (int k = 0; k < unknownDofs.Count; k++)
+					NodalDisplacements[k] = eigenVector[k];
 
 				// Add the buckling modes to each element solution
 				for (int j = 0; j < NElem; j++)
 				{
-				
-					Dictionary<double, List<double>> subDict = new Dictionary<double, List<double>>();
-					subDict.Add(loadFactor, eigenVector);
-					Beams[j].Solution.BucklingModes.Add(i, subDict);
-			}
+					// Add load factor
+					Beams[j].Solution.LoadFactors.Add(loadFactor);
+
+					// Add nodal displacements
+					for (int k = 0; k < EDof[i].Count; k++)
+						Beams[j].Solution.NodalBucklingDisplacements[i].Add(NodalDisplacements[EDof[j][k]]);
+
+				}
 
 			
 		}
