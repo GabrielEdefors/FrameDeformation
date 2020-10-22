@@ -218,6 +218,11 @@ namespace FrameDeformation
 			Kg[3, 3] = Area * StiffnessModulus / ElemLength;
 
 			// Beam stiffness affected by normal force
+			if (Solution.NormalForceField == null)
+			{
+				throw new InvalidOperationException("Normal forces must be computed before geometric stiffness matrix can be created!");
+			}
+
 			double N = Solution.NormalForceField[0];
 			double rho = -N * ElemLength * ElemLength / 
 				         (Math.PI * Math.PI * StiffnessModulus * SecondMomentArea);

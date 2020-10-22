@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using LinearAlgebra = MathNet.Numerics.LinearAlgebra;
+using MathNet.Numerics.LinearAlgebra;
+using MathNet.Numerics.LinearAlgebra.Factorization;
+using MathNet.Numerics;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using Rhino.Geometry;
@@ -24,15 +27,15 @@ namespace FrameDeformation
 		public List<double?> BoundaryConstraints { get; set; } = new List<double?>();
 
 		public List<List<int>> EDof { get; set; } = new List<List<int>>();
-
 		public int NDof { get; set; } = 0;
 		public int NElem { get; set; } = 0;
 		public List<int> BoundaryDofs { get; set; } = new List<int>();
 		public ISolveStrategy SolveStrategy { get; set; }
 
-		public LinearAlgebra.Vector<double> ForceVector { get; set; }
+		public Vector<double> ForceVector { get; set; }
 		public LinearStiffnessMatrix K { get; set; }
 		public GeometricNonlinearStiffnessMatrix KNonLinear { get; set; }
+		public Dictionary<double, List<double>> BucklingModes { get; set; } = new Dictionary<double, List<double>>();
 
 
 		public Frame(List<Line> lines,
@@ -232,7 +235,7 @@ namespace FrameDeformation
 
 		public void CreateForceVector()
 		{
-			ForceVector = LinearAlgebra.Vector<double>.Build.Dense(NDof);
+			ForceVector = Vector<double>.Build.Dense(NDof);
 			for (int i = 0; i < Nodes.Count; i++)
 			{
 
@@ -280,8 +283,8 @@ namespace FrameDeformation
 
 			for (int i = 0; i < Beams.Count; i++)
 			{
-				LinearAlgebra.Matrix<double> KElem = Beams[i].ComputeStiffnessMatrix();
-				LinearAlgebra.Vector<double> fl = Beams[i].ComputeLoadVector();
+				Matrix<double> KElem = Beams[i].ComputeStiffnessMatrix();
+				Vector<double> fl = Beams[i].ComputeLoadVector();
 
 				// Add element contributions to the load vector
 				for (int k = 0; k < 6; k++)
@@ -297,7 +300,7 @@ namespace FrameDeformation
 		public void CalculateDisplacements()
 		{
 			K.ComputeReducedMatrix(BoundaryDofs);
-			LinearAlgebra.Vector<double> displacements = SolveStrategy.Solve(K, ForceVector, BoundaryDofs, BoundaryConstraints.Cast<double>().ToList());
+			Vector<double> displacements = SolveStrategy.Solve(K, ForceVector, BoundaryDofs, BoundaryConstraints.Cast<double>().ToList());
 
 			// Save the displacements for each beam
 			for (int i = 0; i < NElem; i++)
@@ -313,8 +316,6 @@ namespace FrameDeformation
 
 		public void ComputeSectionalForces()
 		{
-
-
 			for (int i = 0; i < NElem; i++)
 			{
 				// Calculate element shear force
@@ -322,7 +323,19 @@ namespace FrameDeformation
 				Beams[i].Solution.BendingMomentField = Beams[i].ComputeBendingMoment(Beams[i].Solution.NodalDisplacements);
 				Beams[i].Solution.NormalForceField = Beams[i].ComputeNormalForce(Beams[i].Solution.NodalDisplacements);
 			}
+		}
 
+		private void ComputeNonLinearStiffnessMatrix()
+		{
+			KNonLinear = new GeometricNonlinearStiffnessMatrix(NDof);
+
+			// Calcualte the gemetric non linear stiffness matrix for the reference load
+			for (int i = 0; i < NElem; i++)
+			{
+				Matrix<double> KElem = Beams[i].ComputeNonLinearStiffnessMatrix();
+				KNonLinear.AddElementContribution(EDof[i], KElem);
+
+			}
 		}
 
 		/// <summary>
@@ -330,20 +343,32 @@ namespace FrameDeformation
 		/// </summary>
 		public void CalculateBucklingModes()
 		{
-			if (Beams[0].Solution.NormalForceField == null)
+			this.ComputeNonLinearStiffnessMatrix();
+
+			// Solve the eigenvalue problem for the reference load
+			Evd<double> eigen = K.ReducedK.Inverse().Multiply(KNonLinear.ReducedK).Evd(Symmetricity.Symmetric);
+			Vector<double> eigenValues = eigen.EigenValues.Real();
+			Matrix<double> eigenVectors = eigen.EigenVectors;
+
+			// Calculate the load factors
+			for (int i = 0; i < eigenValues.Count; i++)
 			{
-				throw new InvalidOperationException("Normal forces must be computed before buckling analysis can be performed!");
+				double loadFactor = 1 / (1 - eigenValues[i]);
+				List<double> eigenVector = eigenVectors.Column(i).ToList();
+
+				// Add the prescribed displacements to the result
+				
+
+				// Add the buckling modes to each element solution
+				for (int j = 0; j < NElem; j++)
+				{
+				
+					Dictionary<double, List<double>> subDict = new Dictionary<double, List<double>>();
+					subDict.Add(loadFactor, eigenVector);
+					Beams[j].Solution.BucklingModes.Add(i, subDict);
 			}
 
-			KNonLinear = new GeometricNonlinearStiffnessMatrix(NDof);
-
-			// Calcualte the gemetric non linear stiffness matrix for the reference load
-			for (int i = 0; i < NElem; i++)
-			{
-				Beams[i].ComputeNonLinearStiffnessMatrix();
-
-				// Next time, assemble in the non linear parts
-			}
+			
 		}
 		
 	}
